@@ -1,5 +1,4 @@
 import {Router} from "express";
-import {getMe} from "../../modules/user/user.controller.js";
 import {authGuard} from "../../middleware/authGuard.js";
 import {requireRole} from "../../middleware/requireRole.js";
 import {UserRole} from "@prisma/client";
