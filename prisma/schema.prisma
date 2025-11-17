@@ -1,0 +1,42 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int            @id @default(autoincrement())
+  name      String
+  email     String         @unique
+  avatarUrl String?
+  role      UserRole       @default(USER)
+  providers AuthProvider[]
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+}
+
+model AuthProvider {
+  id             Int              @id @default(autoincrement())
+  provider       AuthProviderType
+  providerUserId String?          @unique
+  passwordHash   String?
+  user           User             @relation(fields: [userId], references: [id])
+  userId         Int
+  createdAt      DateTime         @default(now())
+
+  @@unique([provider, userId])
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum AuthProviderType {
+  CREDENTIALS
+  GOOGLE
+  FACEBOOK
+}
