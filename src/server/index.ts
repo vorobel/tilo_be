@@ -1,3 +1,6 @@
+console.log(">>> server/index.ts LOADED");
+
+import 'dotenv/config';
 import { createApp } from '../app/index.js';
 import { waitForDB } from '../infra/database.js';
 import { config } from '../config/env.js';

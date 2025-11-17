@@ -1,6 +1,5 @@
 import { prisma } from '../../infra/database.js';
 import { hash, verify } from '@node-rs/argon2';
-import type {GoogleProfile} from "./google.js";
 import {AuthProviderType} from '@prisma/client';
 import type {FacebookProfile} from "./facebook.js";
 
@@ -82,8 +81,13 @@ export async function loginWithCredentials(email: string, password: string) {
     return user;
 }
 
-export async function loginWithGoogle(profile: GoogleProfile) {
-    const { googleId, email, name, picture } = profile;
+export async function loginWithGoogle(profile: {
+    googleId: string;
+    email: string;
+    name: string;
+    picture: string | null;
+}) {
+    const { email, name, googleId } = profile;
 
     const existingUser = await prisma.user.findUnique({
         where: { email },
@@ -92,9 +96,7 @@ export async function loginWithGoogle(profile: GoogleProfile) {
 
     if (existingUser) {
         const hasGoogle = existingUser.providers.some(
-            (p) =>
-                p.provider === AuthProviderType.GOOGLE &&
-                p.providerUserId === googleId,
+            p => p.provider === AuthProviderType.GOOGLE && p.providerUserId === googleId
         );
 
         if (!hasGoogle) {
@@ -103,38 +105,31 @@ export async function loginWithGoogle(profile: GoogleProfile) {
                     provider: AuthProviderType.GOOGLE,
                     providerUserId: googleId,
                     userId: existingUser.id,
-                }
-            })
+                },
+            });
         }
 
-        const user = await prisma.user.update({
-            where: { id: existingUser.id },
-            data: {
-                name: existingUser.name || name,
-                avatarUrl: existingUser.avatarUrl || picture,
-            },
-            include: { providers: true },
-        });
-
-        return user;
+        return existingUser;
     }
 
-    const user = await prisma.user.create({
+    const newUser = await prisma.user.create({
         data: {
             email,
             name,
-            avatarUrl: picture,
+            avatarUrl: profile.picture,
             providers: {
                 create: {
                     provider: AuthProviderType.GOOGLE,
                     providerUserId: googleId,
-                }
-            }
+                },
+            },
         },
-        include: { providers: true },
+        include: {
+            providers: true,
+        },
     });
 
-    return user;
+    return newUser;
 }
 
 export async function loginWithFacebook(profile: FacebookProfile) {
