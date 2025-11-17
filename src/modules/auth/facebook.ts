@@ -1,3 +1,6 @@
+import {oauthStateCookie} from "../../config/cookies.js";
+import {generateState} from "./oauth.state.js";
+
 export interface FacebookProfile {
     facebookId: string;
     email: string | null;
@@ -5,12 +8,16 @@ export interface FacebookProfile {
     picture: string | null;
 }
 
-export function getFacebookAuthUrl() {
+export function getFacebookAuthUrl(res: any) {
+    const state = generateState();
+    res.cookie("oauth_state", state, oauthStateCookie);
+
     const params = new URLSearchParams({
         client_id: process.env.FACEBOOK_APP_ID!,
         redirect_uri: process.env.FACEBOOK_REDIRECT_URI!,
         response_type: 'code',
         scope: 'email,public_profile',
+        state
     });
 
     return `https://www.facebook.com/v18.0/dialog/oauth?${params.toString()}`;

@@ -33,7 +33,7 @@ authRouter.post("/logout", logout);
  * front: open returned url in new tab
  * -------------------------- */
 authRouter.get("/google/url", (req, res) => {
-    const url = getGoogleAuthUrl();
+    const url = getGoogleAuthUrl(res);
     res.json({ url });
 });
 
@@ -42,28 +42,34 @@ authRouter.get("/google/url", (req, res) => {
  * -------------------------- */
 authRouter.get("/google/callback", async (req, res) => {
     try {
-        const code = req.query.code as string;
-        if (!code) return res.status(400).json({ error: "Missing code" });
+        const { code, state } = req.query;
 
-        const profile = await getGoogleProfile(code);
+        const storedState = req.cookies.oauth_state;
+        if (!state || state !== storedState) {
+            return res.status(400).json({ error: "Invalid or missing state" });
+        }
+
+        res.clearCookie("oauth_state");
+
+        const profile = await getGoogleProfile(code as string);
         const user = await loginWithGoogle(profile);
 
         const accessToken = signAccessToken(user.id);
         const refreshToken = signRefreshToken(user.id);
 
         res.cookie("refresh_token", refreshToken, cookieOption);
-        return res.redirect(`http://localhost:3000/auth/success?token=${accessToken}`);
+        return res.json({ user, accessToken });
     } catch (err) {
-        console.error("Google callback failed:", err);
-        return res.status(400).json({ error: "Google OAuth failed" });
+        res.status(400).json({ error: "Google OAuth failed" });
     }
 });
+
 
 /* --------------------------
  * Facebook OAuth — URL
  * -------------------------- */
 authRouter.get("/facebook/url", (req, res) => {
-    const url = getFacebookAuthUrl();
+    const url = getFacebookAuthUrl(res);
     res.json({ url });
 });
 
@@ -72,33 +78,29 @@ authRouter.get("/facebook/url", (req, res) => {
  * -------------------------- */
 authRouter.get("/facebook/callback", async (req, res) => {
     try {
-        const code = req.query.code as string;
-        if (!code) {
-            return res.status(400).json({ error: "Missing Facebook code" });
+        const { code, state } = req.query;
+        const storedState = req.cookies.oauth_state;
+
+        if (!state || state !== storedState) {
+            return res.status(400).json({ error: "Invalid or missing state" });
         }
 
-        // code → token
-        const tokenData = await exchangeFacebookCodeForToken(code);
+        res.clearCookie("oauth_state");
 
-        // token → profile
+        const tokenData = await exchangeFacebookCodeForToken(code as string);
         const fbProfile = await verifyFacebookAccessToken(tokenData.access_token);
 
-        // login or register
         const user = await loginWithFacebook(fbProfile);
 
-        // issue tokens
         const access = signAccessToken(user.id);
         const refresh = signRefreshToken(user.id);
 
         res.cookie("refresh_token", refresh, cookieOption);
-
-        return res.redirect(`http://localhost:3000/auth/success?token=${access}`);
+        return res.json({ user, accessToken: access });
     } catch (err) {
-        console.error("Facebook callback failed:", err);
-        return res.status(400).json({ error: "Facebook OAuth failed" });
+        res.status(400).json({ error: "Facebook OAuth failed" });
     }
-});
-
+})
 /* --------------------------
  * Facebook direct token auth (mobile apps)
  * -------------------------- */

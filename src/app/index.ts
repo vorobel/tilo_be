@@ -1,6 +1,3 @@
-console.log(">>> app/index.ts LOADED");
-
-
 import express, { type Application } from 'express';
 import cors from 'cors';
 import { router } from './routes/index.js';

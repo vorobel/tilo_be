@@ -1,5 +1,6 @@
 import {OAuth2Client} from "google-auth-library";
-import {config} from "../../config/env.js";
+import {generateState} from "./oauth.state.js";
+import {oauthStateCookie} from "../../config/cookies.js";
 
 export const google = new OAuth2Client({
     clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -7,7 +8,11 @@ export const google = new OAuth2Client({
     redirectUri: process.env.GOOGLE_REDIRECT_URI!,
 });
 
-export function getGoogleAuthUrl() {
+export function getGoogleAuthUrl(res: any) {
+    const state = generateState();
+
+    res.cookie("oauth_state", state, oauthStateCookie);
+
     const scopes = [
         'openid',
         'profile',
@@ -18,5 +23,6 @@ export function getGoogleAuthUrl() {
         access_type: 'offline',
         prompt: 'consent',
         scope: scopes,
+        state
     })
 }
